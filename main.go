@@ -14,7 +14,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kbinani/screenshot"
 )
@@ -24,22 +23,29 @@ var combo *widget.Select
 var timeInput *widget.Entry
 var outInput *widget.Entry
 var startstop *widget.Button
+var frameCount *widget.RichText
+var frames int
 var recording bool
 var stopChan chan struct{}
 
 func main() {
 	a := app.New()
 	w := a.NewWindow("gosh")
+	w.Resize(fyne.NewSize(600, 330))
 	stopChan = make(chan struct{})
 
 	combo = widget.NewSelect([]string{"aeg"}, func(value string) {
 		parts := strings.Split(value, ":")
 		targetDisplay, _ = strconv.Atoi(parts[0])
-		log.Println("Select set to", targetDisplay)
+	})
+
+	refreshButton := widget.NewButton("Refresh", func() {
+		refreshDisplays()
 	})
 
 	refreshDisplays()
-	label := widget.NewLabel("Select a Monitorus")
+	combo.SetSelectedIndex(0)
+	label := widget.NewLabel("Select a Monitor")
 
 	timeLabel := widget.NewLabel("Time in seconds")
 	timeInput = widget.NewEntry()
@@ -54,10 +60,25 @@ func main() {
 	outLabel := widget.NewLabel("Output directory")
 	outInput = widget.NewEntry()
 	outFolderOpen := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
-		outInput.SetText(uri.Path())
+		if err != nil {
+			log.Println("Error opening folder", err)
+		} else if uri != nil {
+			outInput.SetText(uri.Path())
+		}
 	}, w)
+	outFolderOpen.SetConfirmText("Select")
 	outButton := widget.NewButton("...", func() {
 		outFolderOpen.Show()
+	})
+	openButton := widget.NewButton("Open", func() {
+		p, err := filepath.Abs(outInput.Text)
+		if err != nil {
+			log.Println("Error getting absolute path", err)
+			return
+		}
+		if err := openPath(p); err != nil {
+			log.Println("Error opening path", err)
+		}
 	})
 
 	startstop = widget.NewButton("Start", func() {
@@ -72,14 +93,18 @@ func main() {
 		}
 	})
 
+	frameCount = widget.NewRichText()
+	refreshFrameCount()
+
 	w.SetContent(container.NewVBox(
 		label,
-		combo,
+		container.NewBorder(nil, nil, nil, refreshButton, combo),
 		timeLabel,
 		timeInput,
 		outLabel,
-		container.New(layout.NewGridLayout(2), outInput, outButton),
+		container.NewBorder(nil, nil, nil, container.NewAdaptiveGrid(2, outButton, openButton), outInput),
 		startstop,
+		container.NewCenter(frameCount),
 	))
 
 	w.ShowAndRun()
@@ -97,6 +122,8 @@ func refreshDisplays() {
 }
 
 func start() {
+	frames = 0
+	refreshFrameCount()
 	seconds, err := strconv.ParseFloat(timeInput.Text, 64)
 	if err != nil {
 		log.Println("Error parsing time", err)
@@ -124,6 +151,8 @@ func start() {
 				}
 				png.Encode(f, img)
 				f.Close()
+				frames++
+				refreshFrameCount()
 			}
 		}
 	}()
@@ -131,4 +160,8 @@ func start() {
 
 func stop() {
 	stopChan <- struct{}{}
+}
+
+func refreshFrameCount() {
+	frameCount.ParseMarkdown(fmt.Sprintf("**%d** frames", frames))
 }
