@@ -42,10 +42,10 @@ func main() {
 		parts := strings.Split(value, ":")
 		targetDisplay, _ = strconv.Atoi(parts[0])
 		otherParts := strings.Split(parts[1], "x")
-		x1, _ := strconv.Atoi(otherParts[0])
-		y1, _ := strconv.Atoi(otherParts[1])
-		x2, _ := strconv.Atoi(otherParts[2])
-		y2, _ := strconv.Atoi(otherParts[3])
+		x1, _ := strconv.Atoi(strings.TrimSpace(otherParts[0]))
+		y1, _ := strconv.Atoi(strings.TrimSpace(otherParts[1]))
+		x2, _ := strconv.Atoi(strings.TrimSpace(otherParts[2]))
+		y2, _ := strconv.Atoi(strings.TrimSpace(otherParts[3]))
 		setArea(x1, y1, x2, y2)
 	})
 
@@ -193,7 +193,7 @@ func start() {
 			case <-stopChan:
 				return
 			case <-time.After(time.Millisecond * t):
-				img, err := screenshot.CaptureRect(image.Rect(int(x1), int(y1), int(x2), int(y2)))
+				img, err := screenshot.CaptureRect(image.Rect(int(x1), int(y1), int(x1+x2), int(y1+y2)))
 				if err != nil {
 					panic(err)
 				}
