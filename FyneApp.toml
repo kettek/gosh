@@ -1,0 +1,8 @@
+Website = "https://github.com/kettek/gosh"
+
+[Details]
+  Icon = "assets/gosh.png"
+  Name = "gosh"
+  ID = "net.kettek.gosh"
+  Version = "1.0.0"
+  Build = 2
