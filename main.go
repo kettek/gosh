@@ -14,6 +14,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kbinani/screenshot"
 )
@@ -40,9 +41,10 @@ func main() {
 		targetDisplay, _ = strconv.Atoi(parts[0])
 	})
 
-	refreshButton := widget.NewButton("Refresh", func() {
+	refreshButton := widget.NewButton("", func() {
 		refreshDisplays()
 	})
+	refreshButton.Icon = theme.ViewRefreshIcon()
 
 	refreshDisplays()
 	combo.SetSelectedIndex(0)
@@ -68,10 +70,11 @@ func main() {
 		}
 	}, w)
 	outFolderOpen.SetConfirmText("Select")
-	outButton := widget.NewButton("...", func() {
+	outButton := widget.NewButton("", func() {
 		outFolderOpen.Show()
 	})
-	openButton := widget.NewButton("Open", func() {
+	outButton.Icon = theme.FolderOpenIcon()
+	openButton := widget.NewButton("", func() {
 		p, err := filepath.Abs(outInput.Text)
 		if err != nil {
 			log.Println("Error getting absolute path", err)
@@ -81,18 +84,20 @@ func main() {
 			log.Println("Error opening path", err)
 		}
 	})
+	openButton.Icon = theme.MailForwardIcon()
 
-	startstop = widget.NewButton("Start", func() {
+	startstop = widget.NewButton("", func() {
 		if recording {
 			stop()
 			recording = false
-			startstop.SetText("Start")
+			startstop.SetIcon(theme.MediaRecordIcon())
 		} else {
 			recording = true
-			startstop.SetText("Stop")
+			startstop.SetIcon(theme.MediaStopIcon())
 			start()
 		}
 	})
+	startstop.Icon = theme.MediaRecordIcon()
 
 	infoText = widget.NewRichText()
 	refreshInfo()
@@ -104,7 +109,7 @@ func main() {
 		timeInput,
 		outLabel,
 		container.NewBorder(nil, nil, nil, container.NewAdaptiveGrid(2, outButton, openButton), outInput),
-		startstop,
+		container.NewCenter(startstop),
 		container.NewCenter(infoText),
 	))
 
