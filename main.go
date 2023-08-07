@@ -23,8 +23,9 @@ var combo *widget.Select
 var timeInput *widget.Entry
 var outInput *widget.Entry
 var startstop *widget.Button
-var frameCount *widget.RichText
+var infoText *widget.RichText
 var frames int
+var bytes int64
 var recording bool
 var stopChan chan struct{}
 
@@ -93,8 +94,8 @@ func main() {
 		}
 	})
 
-	frameCount = widget.NewRichText()
-	refreshFrameCount()
+	infoText = widget.NewRichText()
+	refreshInfo()
 
 	w.SetContent(container.NewVBox(
 		label,
@@ -104,7 +105,7 @@ func main() {
 		outLabel,
 		container.NewBorder(nil, nil, nil, container.NewAdaptiveGrid(2, outButton, openButton), outInput),
 		startstop,
-		container.NewCenter(frameCount),
+		container.NewCenter(infoText),
 	))
 
 	w.ShowAndRun()
@@ -122,8 +123,9 @@ func refreshDisplays() {
 }
 
 func start() {
+	bytes = 0
 	frames = 0
-	refreshFrameCount()
+	refreshInfo()
 	seconds, err := strconv.ParseFloat(timeInput.Text, 64)
 	if err != nil {
 		log.Println("Error parsing time", err)
@@ -150,9 +152,14 @@ func start() {
 					panic(err)
 				}
 				png.Encode(f, img)
+				s, err := f.Stat()
+				if err != nil {
+					panic(err)
+				}
 				f.Close()
+				bytes += s.Size()
 				frames++
-				refreshFrameCount()
+				refreshInfo()
 			}
 		}
 	}()
@@ -162,6 +169,6 @@ func stop() {
 	stopChan <- struct{}{}
 }
 
-func refreshFrameCount() {
-	frameCount.ParseMarkdown(fmt.Sprintf("**%d** frames", frames))
+func refreshInfo() {
+	infoText.ParseMarkdown(fmt.Sprintf("**%d** frames\n\n**%.2f** MB", frames, float64(bytes)/1024/1024))
 }
