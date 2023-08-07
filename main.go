@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"image/png"
 	"log"
 	"os"
@@ -20,11 +21,12 @@ import (
 )
 
 var targetDisplay int
-var combo *widget.Select
+var monitorCombo *widget.Select
 var timeInput *widget.Entry
 var outInput *widget.Entry
 var startstop *widget.Button
 var infoText *widget.RichText
+var areaX1, areaY1, areaX2, areaY2 *widget.Entry
 var frames int
 var bytes int64
 var recording bool
@@ -33,12 +35,18 @@ var stopChan chan struct{}
 func main() {
 	a := app.New()
 	w := a.NewWindow("gosh")
-	w.Resize(fyne.NewSize(600, 330))
+	w.Resize(fyne.NewSize(500, 200))
 	stopChan = make(chan struct{})
 
-	combo = widget.NewSelect([]string{"aeg"}, func(value string) {
+	monitorCombo = widget.NewSelect([]string{"aeg"}, func(value string) {
 		parts := strings.Split(value, ":")
 		targetDisplay, _ = strconv.Atoi(parts[0])
+		otherParts := strings.Split(parts[1], "x")
+		x1, _ := strconv.Atoi(otherParts[0])
+		y1, _ := strconv.Atoi(otherParts[1])
+		x2, _ := strconv.Atoi(otherParts[2])
+		y2, _ := strconv.Atoi(otherParts[3])
+		setArea(x1, y1, x2, y2)
 	})
 
 	refreshButton := widget.NewButton("", func() {
@@ -46,11 +54,32 @@ func main() {
 	})
 	refreshButton.Icon = theme.ViewRefreshIcon()
 
-	refreshDisplays()
-	combo.SetSelectedIndex(0)
-	label := widget.NewLabel("Select a Monitor")
+	monitorLabel := widget.NewLabel("Monitor")
+	monitorLabelContainer := container.NewGridWrap(fyne.NewSize(150, 0), monitorLabel)
 
-	timeLabel := widget.NewLabel("Time in seconds")
+	areaLabel := widget.NewLabel("Area")
+	areaLabelContainer := container.NewGridWrap(fyne.NewSize(150, 0), areaLabel)
+	makeNumberEntry := func() *widget.Entry {
+		e := widget.NewEntry()
+		e.SetText("0")
+		e.Validator = func(s string) error {
+			if _, err := strconv.Atoi(s); err != nil {
+				return err
+			}
+			return nil
+		}
+		return e
+	}
+	areaX1 = makeNumberEntry()
+	areaY1 = makeNumberEntry()
+	areaX2 = makeNumberEntry()
+	areaY2 = makeNumberEntry()
+
+	refreshDisplays()
+	monitorCombo.SetSelectedIndex(0)
+
+	timeLabel := widget.NewLabel("Frequency (seconds)")
+	timeLabelContainer := container.NewGridWrap(fyne.NewSize(150, 0), timeLabel)
 	timeInput = widget.NewEntry()
 	timeInput.SetText("5.0")
 	timeInput.Validator = func(s string) error {
@@ -61,6 +90,7 @@ func main() {
 	}
 
 	outLabel := widget.NewLabel("Output directory")
+	outLabelContainer := container.NewGridWrap(fyne.NewSize(150, 0), outLabel)
 	outInput = widget.NewEntry()
 	outFolderOpen := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 		if err != nil {
@@ -102,16 +132,22 @@ func main() {
 	infoText = widget.NewRichText()
 	refreshInfo()
 
-	w.SetContent(container.NewVBox(
-		label,
-		container.NewBorder(nil, nil, nil, refreshButton, combo),
-		timeLabel,
-		timeInput,
-		outLabel,
-		container.NewBorder(nil, nil, nil, container.NewAdaptiveGrid(2, outButton, openButton), outInput),
+	recordSection := container.NewVBox(
+		container.NewBorder(nil, nil, monitorLabelContainer, nil,
+			container.NewBorder(nil, nil, nil, refreshButton, monitorCombo),
+		),
+		container.NewBorder(nil, nil, areaLabelContainer, nil,
+			container.NewAdaptiveGrid(4, areaX1, areaY1, areaX2, areaY2),
+		),
+		container.NewBorder(nil, nil, timeLabelContainer, nil, timeInput),
+		container.NewBorder(nil, nil, outLabelContainer, nil,
+			container.NewBorder(nil, nil, nil, container.NewAdaptiveGrid(2, outButton, openButton), outInput),
+		),
 		container.NewCenter(startstop),
 		container.NewCenter(infoText),
-	))
+	)
+
+	w.SetContent(recordSection)
 
 	w.ShowAndRun()
 }
@@ -124,10 +160,21 @@ func refreshDisplays() {
 		bounds := screenshot.GetDisplayBounds(i)
 		displayNames = append(displayNames, fmt.Sprintf("%d: %dx%dx%dx%d", i, bounds.Min.X, bounds.Min.Y, bounds.Dx(), bounds.Dy()))
 	}
-	combo.Options = displayNames
+	monitorCombo.Options = displayNames
+}
+
+func setArea(x1, y1, x2, y2 int) {
+	areaX1.SetText(strconv.Itoa(x1))
+	areaY1.SetText(strconv.Itoa(y1))
+	areaX2.SetText(strconv.Itoa(x2))
+	areaY2.SetText(strconv.Itoa(y2))
 }
 
 func start() {
+	x1, _ := strconv.ParseInt(areaX1.Text, 10, 64)
+	y1, _ := strconv.ParseInt(areaY1.Text, 10, 64)
+	x2, _ := strconv.ParseInt(areaX2.Text, 10, 64)
+	y2, _ := strconv.ParseInt(areaY2.Text, 10, 64)
 	bytes = 0
 	frames = 0
 	refreshInfo()
@@ -146,7 +193,7 @@ func start() {
 			case <-stopChan:
 				return
 			case <-time.After(time.Millisecond * t):
-				img, err := screenshot.CaptureRect(screenshot.GetDisplayBounds(targetDisplay))
+				img, err := screenshot.CaptureRect(image.Rect(int(x1), int(y1), int(x2), int(y2)))
 				if err != nil {
 					panic(err)
 				}
