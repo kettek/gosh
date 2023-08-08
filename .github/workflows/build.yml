@@ -23,6 +23,11 @@ jobs:
       - name: Build
         shell: bash
         run: fyne package
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: package-lin
+          path: gosh.tar.xz
   build-win:
     name: Build Windows
     runs-on: windows-latest
@@ -47,6 +52,11 @@ jobs:
         run: go install fyne.io/fyne/v2/cmd/fyne@latest
       - name: Build
         run: fyne package
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: package-win
+          path: gosh.exe
   release:
     name: Release built binaries
     runs-on: ubuntu-latest
