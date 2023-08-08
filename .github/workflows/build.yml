@@ -66,11 +66,11 @@ jobs:
     - name: Download Linux binary
       uses: actions/download-artifact@v3
       with:
-        name: gosh.tar.xz
+        name: package-lin
     - name: Download Windows binary
       uses: actions/download-artifact@v3
       with:
-        name: gosh.exe
+        name: package-win
     - uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
