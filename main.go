@@ -48,7 +48,7 @@ var recording bool
 var stopChan chan struct{}
 
 func main() {
-	a = app.New()
+	a = app.NewWithID("net.kettek.gosh")
 
 	normalIcon = fyne.NewStaticResource("gosh", iconBytes)
 	recordIcon = fyne.NewStaticResource("gosh", iconRecordBytes)
@@ -98,6 +98,7 @@ func main() {
 		x2, _ := strconv.Atoi(strings.TrimSpace(otherParts[2]))
 		y2, _ := strconv.Atoi(strings.TrimSpace(otherParts[3]))
 		setArea(x1, y1, x2, y2)
+		a.Preferences().SetInt("recordDisplay", targetDisplay)
 	})
 
 	refreshButton := widget.NewButton("", func() {
@@ -127,22 +128,33 @@ func main() {
 	areaY2 = makeNumberEntry()
 
 	refreshDisplays()
-	monitorCombo.SetSelectedIndex(0)
+	if a.Preferences().Int("recordDisplay") >= len(monitorCombo.Options) {
+		monitorCombo.SetSelectedIndex(len(monitorCombo.Options) - 1)
+	} else {
+		monitorCombo.SetSelectedIndex(a.Preferences().IntWithFallback("recordDisplay", 0))
+	}
 
 	timeLabel := widget.NewLabel("Frequency (seconds)")
 	timeLabelContainer := container.NewGridWrap(fyne.NewSize(150, 0), timeLabel)
 	timeInput = widget.NewEntry()
-	timeInput.SetText("5.0")
 	timeInput.Validator = func(s string) error {
 		if _, err := strconv.ParseFloat(s, 64); err != nil {
 			return err
 		}
 		return nil
 	}
+	timeInput.SetText(a.Preferences().StringWithFallback("recordFrequency", "5"))
+	timeInput.OnChanged = func(s string) {
+		a.Preferences().SetString("recordFrequency", s)
+	}
 
 	outLabel := widget.NewLabel("Output directory")
 	outLabelContainer := container.NewGridWrap(fyne.NewSize(150, 0), outLabel)
 	outInput = widget.NewEntry()
+	outInput.SetText(a.Preferences().StringWithFallback("recordOutput", ""))
+	outInput.OnChanged = func(s string) {
+		a.Preferences().SetString("recordOutput", s)
+	}
 	outFolderOpen := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 		if err != nil {
 			log.Println("Error opening folder", err)
