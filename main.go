@@ -11,15 +11,24 @@ import (
 	"strings"
 	"time"
 
+	_ "embed"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kbinani/screenshot"
 )
 
+//go:embed assets/gosh.png
+var iconBytes []byte
+
+var window fyne.Window
+var windowHidden bool
+var systrayMenu *fyne.Menu
 var targetDisplay int
 var monitorCombo *widget.Select
 var timeInput *widget.Entry
@@ -34,9 +43,35 @@ var stopChan chan struct{}
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("gosh")
-	w.Resize(fyne.NewSize(500, 200))
+
+	window = a.NewWindow("gosh")
+	window.Resize(fyne.NewSize(500, 200))
 	stopChan = make(chan struct{})
+
+	window.SetCloseIntercept(func() {
+		windowHidden = true
+		window.Hide()
+		systrayMenu.Items[0].Label = "Show"
+		systrayMenu.Refresh()
+	})
+
+	if desk, ok := a.(desktop.App); ok {
+		systrayMenu = fyne.NewMenu("gosh",
+			fyne.NewMenuItem("Hide", func() {
+				if windowHidden {
+					window.Show()
+					systrayMenu.Items[0].Label = "Hide"
+				} else {
+					window.Hide()
+					systrayMenu.Items[0].Label = "Show"
+				}
+				systrayMenu.Refresh()
+				windowHidden = !windowHidden
+			}),
+		)
+		desk.SetSystemTrayMenu(systrayMenu)
+		desk.SetSystemTrayIcon(fyne.NewStaticResource("gosh", iconBytes))
+	}
 
 	monitorCombo = widget.NewSelect([]string{"aeg"}, func(value string) {
 		parts := strings.Split(value, ":")
@@ -98,7 +133,7 @@ func main() {
 		} else if uri != nil {
 			outInput.SetText(uri.Path())
 		}
-	}, w)
+	}, window)
 	outFolderOpen.SetConfirmText("Select")
 	outButton := widget.NewButton("", func() {
 		outFolderOpen.Show()
@@ -147,9 +182,9 @@ func main() {
 		container.NewCenter(infoText),
 	)
 
-	w.SetContent(recordSection)
+	window.SetContent(recordSection)
 
-	w.ShowAndRun()
+	window.ShowAndRun()
 }
 
 func refreshDisplays() {
