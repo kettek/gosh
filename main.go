@@ -25,7 +25,13 @@ import (
 
 //go:embed assets/gosh.png
 var iconBytes []byte
+var normalIcon *fyne.StaticResource
 
+//go:embed assets/gosh-record.png
+var iconRecordBytes []byte
+var recordIcon *fyne.StaticResource
+
+var a fyne.App
 var window fyne.Window
 var windowHidden bool
 var systrayMenu *fyne.Menu
@@ -42,13 +48,20 @@ var recording bool
 var stopChan chan struct{}
 
 func main() {
-	a := app.New()
+	a = app.New()
+
+	normalIcon = fyne.NewStaticResource("gosh", iconBytes)
+	recordIcon = fyne.NewStaticResource("gosh", iconRecordBytes)
 
 	window = a.NewWindow("gosh")
 	window.Resize(fyne.NewSize(500, 200))
 	stopChan = make(chan struct{})
 
 	window.SetCloseIntercept(func() {
+		if !recording {
+			a.Quit()
+			return
+		}
 		windowHidden = true
 		window.Hide()
 		systrayMenu.Items[0].Label = "Show"
@@ -68,9 +81,12 @@ func main() {
 				systrayMenu.Refresh()
 				windowHidden = !windowHidden
 			}),
+			fyne.NewMenuItem("Record", func() {
+				startStop()
+			}),
 		)
 		desk.SetSystemTrayMenu(systrayMenu)
-		desk.SetSystemTrayIcon(fyne.NewStaticResource("gosh", iconBytes))
+		desk.SetSystemTrayIcon(normalIcon)
 	}
 
 	monitorCombo = widget.NewSelect([]string{"aeg"}, func(value string) {
@@ -152,15 +168,7 @@ func main() {
 	openButton.Icon = theme.MailForwardIcon()
 
 	startstop = widget.NewButton("", func() {
-		if recording {
-			stop()
-			recording = false
-			startstop.SetIcon(theme.MediaRecordIcon())
-		} else {
-			recording = true
-			startstop.SetIcon(theme.MediaStopIcon())
-			start()
-		}
+		startStop()
 	})
 	startstop.Icon = theme.MediaRecordIcon()
 
@@ -185,6 +193,28 @@ func main() {
 	window.SetContent(recordSection)
 
 	window.ShowAndRun()
+}
+
+func startStop() {
+	if recording {
+		stop()
+		recording = false
+		startstop.SetIcon(theme.MediaRecordIcon())
+		if desk, ok := a.(desktop.App); ok {
+			desk.SetSystemTrayIcon(normalIcon)
+			systrayMenu.Items[1].Label = "Record"
+			systrayMenu.Refresh()
+		}
+	} else {
+		recording = true
+		startstop.SetIcon(theme.MediaStopIcon())
+		if desk, ok := a.(desktop.App); ok {
+			desk.SetSystemTrayIcon(recordIcon)
+			systrayMenu.Items[1].Label = "Stop"
+			systrayMenu.Refresh()
+		}
+		start()
+	}
 }
 
 func refreshDisplays() {
