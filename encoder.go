@@ -42,6 +42,7 @@ type encoder struct {
 }
 
 func (e *encoder) setup(backend backend) {
+	setup := false
 	e.backend = backend
 
 	var types []string
@@ -64,23 +65,49 @@ func (e *encoder) setup(backend backend) {
 	// Type
 	typeLabel := widget.NewLabel("Type")
 	e.typeCombo = widget.NewSelect(types, func(value string) {
-		e.outFileInput.SetText(e.outputPath + "." + e.typeCombo.Selected)
+		a.Preferences().SetString("encoderType", e.typeCombo.Selected)
+		if setup {
+			e.outFileInput.SetText(e.outputPath + "." + e.typeCombo.Selected)
+		}
 	})
+
+	selected := false
+	for i, t := range types {
+		if t == a.Preferences().StringWithFallback("encoderType", "webm") {
+			e.typeCombo.SetSelectedIndex(i)
+			selected = true
+			break
+		}
+	}
+	if !selected {
+		e.typeCombo.SetSelectedIndex(0)
+	}
 
 	// fps
 	fpsLabel := widget.NewLabel("FPS")
 	e.fpsInput = widget.NewEntry()
-	e.fpsInput.SetText(fmt.Sprintf("%f", 5.0))
+	e.fpsInput.SetText(fmt.Sprintf("%f", a.Preferences().FloatWithFallback("encoderFPS", 5.0)))
 	e.fpsInput.Validator = func(s string) error {
 		if _, err := strconv.ParseFloat(s, 64); err != nil {
 			return err
 		}
 		return nil
 	}
+	e.fpsInput.OnChanged = func(s string) {
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return
+		}
+		a.Preferences().SetFloat("encoderFPS", f)
+	}
 
 	// Input directory
 	inputDirLabel := widget.NewLabel("Input directory")
 	e.inputDirInput = widget.NewEntry()
+	e.inputDirInput.SetText(a.Preferences().String("encoderInputDir"))
+	e.inputDirInput.OnChanged = func(s string) {
+		a.Preferences().SetString("encoderInputDir", s)
+	}
 	inputDirFolderOpen := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 		if err != nil {
 			log.Println("Error opening folder", err)
@@ -108,6 +135,8 @@ func (e *encoder) setup(backend backend) {
 	// Output file
 	outFileLabel := widget.NewLabel("Output file")
 	e.outFileInput = widget.NewEntry()
+	e.outputPath = a.Preferences().String("encoderOutputFile")
+	e.outFileInput.SetText(a.Preferences().String("encoderOutputFile") + "." + e.typeCombo.Selected)
 	e.outFileInput.Disable()
 	outFileSave := dialog.NewFileSave(func(uri fyne.URIWriteCloser, err error) {
 		if err != nil {
@@ -122,6 +151,7 @@ func (e *encoder) setup(backend backend) {
 		e.outputPath = uri.URI().Path()
 		// Strip out the extension
 		e.outputPath = strings.TrimSuffix(e.outputPath, filepath.Ext(e.outputPath))
+		a.Preferences().SetString("encoderOutputFile", e.outputPath)
 		e.outFileInput.SetText(e.outputPath + "." + e.typeCombo.Selected)
 	}, window)
 	outButton := widget.NewButton("", func() {
@@ -145,8 +175,9 @@ func (e *encoder) setup(backend backend) {
 	})
 	e.toggleButton.Icon = theme.MediaPlayIcon()
 
-	e.typeCombo.SetSelectedIndex(0)
 	e.encodeInfo = widget.NewTextGridFromString("...")
+
+	setup = true
 
 	e.container = container.NewVBox(
 		container.NewBorder(nil, nil, container.NewGridWrap(fyne.NewSize(150, 0), typeLabel), nil, e.typeCombo),
@@ -184,8 +215,6 @@ func (e *encoder) encodeTo(inpath, outpath, kind string) {
 	case backendFFMPEG:
 		args = append(args, "-y")
 
-		args = append(args, "-framerate", e.fpsInput.Text)
-
 		args = append(args, "-i", "concat:"+strings.Join(files, "|"))
 
 		if kind == "webm" {
@@ -204,6 +233,8 @@ func (e *encoder) encodeTo(inpath, outpath, kind string) {
 		} else if kind == "png" {
 			args = append(args, "-f", "apng")
 		}
+		args = append(args, "-framerate", e.fpsInput.Text)
+
 		args = append(args, outpath+"."+kind)
 
 		e.runCmd(aSettings.getFFMPEGPath(), inpath, args)
@@ -275,6 +306,7 @@ func (e *encoder) runCmd(binPath string, cwd string, args []string) {
 		return
 	} else {
 		if err := cmd.Wait(); err != nil {
+			fmt.Println(stderr.String())
 			e.encodeInfo.SetText(err.Error())
 			return
 		}
