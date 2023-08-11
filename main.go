@@ -113,7 +113,7 @@ func refreshBackend() {
 	} else {
 		if aSettings.discoveredFFMPEGPath != "" {
 			aEncoder.setup(backendFFMPEG)
-		} else if aSettings.discoveredConvertPath != "" || aSettings.discoveredMagickPath != "" {
+		} else if aSettings.discoveredConvertPath != "" && aSettings.discoveredMagickPath != "" {
 			aEncoder.setup(backendImageMagick)
 		} else {
 			aEncoder.setup(backendIntegrated)
