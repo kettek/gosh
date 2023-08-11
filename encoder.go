@@ -215,6 +215,8 @@ func (e *encoder) encodeTo(inpath, outpath, kind string) {
 	case backendFFMPEG:
 		args = append(args, "-y")
 
+		args = append(args, "-framerate", e.fpsInput.Text)
+
 		args = append(args, "-i", "concat:"+strings.Join(files, "|"))
 
 		if kind == "webm" {
@@ -233,7 +235,6 @@ func (e *encoder) encodeTo(inpath, outpath, kind string) {
 		} else if kind == "png" {
 			args = append(args, "-f", "apng")
 		}
-		args = append(args, "-framerate", e.fpsInput.Text)
 
 		args = append(args, outpath+"."+kind)
 
@@ -269,7 +270,7 @@ func (e *encoder) encodeTo(inpath, outpath, kind string) {
 		}
 		defer out.Close()
 		for i, s := range files {
-			in, err := os.Open(s)
+			in, err := os.Open(filepath.Join(inpath, s))
 			if err != nil {
 				e.encodeInfo.SetText(err.Error())
 				return
@@ -328,7 +329,7 @@ func getPNGs(p string) (files []string, err error) {
 			continue
 		}
 		if strings.HasSuffix(e.Name(), ".png") {
-			files = append(files, filepath.Join(p, e.Name()))
+			files = append(files, e.Name())
 		}
 	}
 	return
