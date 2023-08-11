@@ -5,6 +5,7 @@ go 1.20
 require (
 	fyne.io/fyne/v2 v2.3.5
 	github.com/kbinani/screenshot v0.0.0-20210720154843-7d3a670d8329
+	github.com/kettek/apng v0.0.0-20220823221153-ff692776a607
 )
 
 require (
