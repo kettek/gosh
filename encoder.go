@@ -37,6 +37,8 @@ type encoder struct {
 	toggleButton  *widget.Button
 	encodeInfo    *widget.TextGrid
 
+	swapFFMPEGFramerate bool
+
 	backend    backend
 	outputPath string
 }
@@ -44,6 +46,8 @@ type encoder struct {
 func (e *encoder) setup(backend backend) {
 	setup := false
 	e.backend = backend
+
+	e.swapFFMPEGFramerate = a.Preferences().BoolWithFallback("swapFFMPEGFramerate", false)
 
 	var types []string
 	switch backend {
@@ -215,7 +219,9 @@ func (e *encoder) encodeTo(inpath, outpath, kind string) {
 	case backendFFMPEG:
 		args = append(args, "-y")
 
-		args = append(args, "-framerate", e.fpsInput.Text)
+		if e.swapFFMPEGFramerate {
+			args = append(args, "-framerate", e.fpsInput.Text)
+		}
 
 		args = append(args, "-i", "concat:"+strings.Join(files, "|"))
 
@@ -236,7 +242,13 @@ func (e *encoder) encodeTo(inpath, outpath, kind string) {
 			args = append(args, "-f", "apng")
 		}
 
+		if !e.swapFFMPEGFramerate {
+			args = append(args, "-framerate", e.fpsInput.Text)
+		}
+
 		args = append(args, outpath+"."+kind)
+
+		fmt.Println(args)
 
 		e.runCmd(aSettings.getFFMPEGPath(), inpath, args)
 	case backendImageMagick:

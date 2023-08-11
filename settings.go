@@ -128,6 +128,14 @@ func (s *settings) setup() {
 		}
 	})
 
+	swapFFMPEGFramerateLabel := widget.NewLabel("Swap FFMPEG framerate")
+	swapFFMPEGFramerateCheck := widget.NewCheck("", func(value bool) {
+		aEncoder.swapFFMPEGFramerate = value
+		a.Preferences().SetBool("swapFFMPEGFramerate", value)
+	})
+	swapFFMPEGFramerateCheck.SetChecked(a.Preferences().BoolWithFallback("swapFFMPEGFramerate", false))
+	swapFFMPEGFramerateInfo := widget.NewLabel("If you are having issues, such as exit status 1, try enabling this.")
+
 	s.container = container.NewVBox(
 		container.NewBorder(nil, nil, container.NewGridWrap(fyne.NewSize(150, 0), backendsLabel), nil,
 			container.NewBorder(nil, nil, nil, nil, s.backendsCombo),
@@ -141,6 +149,8 @@ func (s *settings) setup() {
 		container.NewBorder(nil, nil, container.NewGridWrap(fyne.NewSize(150, 0), magickPathLabel), nil,
 			container.NewBorder(nil, nil, nil, container.NewAdaptiveGrid(2, magickPathButton, magickRefreshButton), magickPathInput),
 		),
+		container.NewBorder(nil, nil, container.NewGridWrap(fyne.NewSize(150, 0), swapFFMPEGFramerateLabel), nil, swapFFMPEGFramerateCheck),
+		container.NewBorder(nil, nil, nil, nil, swapFFMPEGFramerateInfo),
 	)
 	setup = true
 }
