@@ -148,6 +148,12 @@ func (r *recorder) setup() {
 		container.NewCenter(r.toggleButton),
 		container.NewCenter(r.infoText),
 	)
+
+	// Setup shortcuts.
+	toggleShortcut := &desktop.CustomShortcut{KeyName: fyne.KeySpace, Modifier: fyne.KeyModifierControl}
+	window.Canvas().AddShortcut(toggleShortcut, func(_ fyne.Shortcut) {
+		r.startStop()
+	})
 }
 
 func (r *recorder) refreshDisplays() {
