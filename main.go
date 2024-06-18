@@ -48,6 +48,8 @@ func main() {
 	normalIcon = fyne.NewStaticResource("gosh", iconBytes)
 	recordIcon = fyne.NewStaticResource("gosh", iconRecordBytes)
 
+	a.SetIcon(normalIcon)
+
 	window = a.NewWindow("gosh")
 	window.Resize(fyne.NewSize(500, 200))
 
