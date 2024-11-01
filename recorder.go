@@ -96,6 +96,9 @@ func (r *recorder) setup() {
 			log.Println(err)
 			return
 		}
+		if uri == nil {
+			return
+		}
 		r.outInput.SetText(uri.Path())
 	}, window)
 	outFolderOpen.SetConfirmText("Select")
